@@ -84,7 +84,7 @@
 
             <div class="content">
                 <div class="title m-b-md">
-                    GRAD 695: Cloud Monitoring System
+                    CISC 699: Cloud Monitoring System
                 </div>
 
                 <div class="links visually-hidden">

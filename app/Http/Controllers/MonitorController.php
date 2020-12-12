@@ -10,6 +10,9 @@ use Aws\CloudWatch\CloudWatchClient;
 use Aws\CloudWatchEvents\CloudWatchEventsClient; 
 use Aws\CloudWatchLogs\CloudWatchLogsClient; 
 use Aws\Exception\AwsException; 
+use Aws\Lambda\LambdaClient; 
+use Aws\S3\S3Client; 
+use Aws\S3\Exception\S3Exceptions; 
 
 class MonitorController extends Controller
 {
@@ -44,53 +47,102 @@ class MonitorController extends Controller
                 'secret' => '',
             ],
         ]); 
-        
         try {
-            $result = $cloudWatchClient->listMetrics();
-
+            $result_nt_in = $cloudWatchClient->getMetricWidgetImage([
+                'MetricWidget' => '{
+                    "region": "us-east-1",
+                    "metrics": [
+                        [ "AWS/EC2", "NetworkPacketsIn", "InstanceId", "", { "stat": "Average" } ]
+                    ],
+                    "title": "Incoming Traffic",
+                    "copilot": true,
+                    "legend": {
+                        "position": "bottom"
+                    },
+                    "view": "timeSeries",
+                    "width":360,
+                    "height":300,
+                    "period":300,
+                    "start":"-PT5M",
+                    "end":"now",
+                    "stacked":false,
+                    "yAxis": {
+                        "left": {
+                            "showUnits": true
+                        }
+                    },  
+                    "stacked": true, 
+                    "liveData": true
+                    }']
+            ); 
+            $result_nt_out = $cloudWatchClient->getMetricWidgetImage([
+                'MetricWidget' => '{
+                    "region": "us-east-1",
+                    "metrics": [
+                        [ "AWS/EC2", "NetworkPacketsOut", "InstanceId", "", { "stat": "Average" } ]
+                    ],
+                    "title": "Outgoing Traffic",
+                    "copilot": true,
+                    "legend": {
+                        "position": "bottom"
+                    },
+                    "view": "timeSeries",
+                    "width":360,
+                    "height":300,
+                    "period":300,
+                      "start":"-PT5M",
+                      "end":"now",
+                      "stacked":false,
+                      "yAxis": {
+                        "left": {
+                            "showUnits": true
+                        }
+                    }, 
+                    "stacked": true, 
+                    "liveData": true
+                    }']
+            );  
+            $result_cpu = $cloudWatchClient->getMetricWidgetImage([
+                'MetricWidget' => '{
+                    "region": "us-east-1",
+                    "metrics": [ 
+                        [ "AWS/EC2", "CPUUtilization", "InstanceId", "", { "stat": "Average" } ]
+                    ],
+                    "title": "CPU Load",
+                    "copilot": true,
+                    "legend": {
+                        "position": "bottom"
+                    },
+                    "view": "timeSeries",
+                    "width":360,
+                    "height":300,
+                    "period":300,
+                      "start":"-PT5M",
+                      "end":"now",
+                      "stacked":false,
+                      "yAxis": {
+                        "left": {
+                            "showUnits": true
+                        }
+                    }, 
+                    "stacked": true, 
+                    "liveData": true
+                    }']
+            ); 
+            //echo get_class($result); 
+            $image_nt_in = $result_nt_in->get('MetricWidgetImage'); 
+            $image_nt_out = $result_nt_out->get('MetricWidgetImage');
+            $image_cpu = $result_cpu->get('MetricWidgetImage');
+            $metadata = $result_cpu->get('@metadata'); 
             $message = ''; 
-
-            if (isset($result['@metadata']['effectiveUri']))
-            {
-                $message .= 'For the effective URI at ' . 
-                    $result['@metadata']['effectiveUri'] . ":<br /><br />";
+            //echo '<img src="data:image/gif;base64,'.base64_encode($image).'" />';  
+            $message .= 'For the effective URI at ' . 
+            $metadata['effectiveUri'] . ":<br /><br />";
+            $message .= "<br /><table><thead><th colspan='2'>Server Status</th></thead><tbody>";
             
-                if ((isset($result['Metrics'])) and 
-                    (count($result['Metrics']) > 0))
-                {
-                    $message .= "<br /><table><thead><th>Metric</th><th>Namespace</th><th>Dimension</th></thead><tbody>";
-
-                    foreach($result['Metrics'] as $metric) 
-                    {
-                        if($metric['MetricName'] == "CallCount") {
-                            continue; 
-                        }
-                        $message .= '<tr><td>' . $metric['MetricName'] . 
-                            '</td><td>' . $metric['Namespace'] . "</td>";
-                        
-                        if ((isset($metric['Dimensions'])) and 
-                            (count($metric['Dimensions']) > 0))
-                        {
-                            $message .= "<td>";
-
-                            foreach ($metric['Dimensions'] as $dimension)
-                            {
-                                $message .= 'Name: ' . $dimension['Name'] . 
-                                    ', Value: ' . $dimension['Value'] . "<br />";
-                            }
-
-                            $message .= "</td></tr>";
-                        } else {
-                            $message .= "<td>No dimensions.</td></tr>";
-                        }
-                    }
-                } else {
-                    $message .= '<tr><td colspan="3">No Metric Found.</td></tr>';
-                }
-            } else {
-                $message .= '<tr><td colspan="3">No Metric Found.</td></tr>';
-            }   
-            return view('monitor/monitor')->with('data', $message);
+            $message .= '<tr><td><img src="data:image/gif;base64,'.base64_encode($image_nt_in).'" /></td><td><img src="data:image/gif;base64,'.base64_encode($image_nt_out).'" /></td></tr>';  
+            $message .= '<tr><td><img src="data:image/gif;base64,'.base64_encode($image_cpu).'" /></td></tr>';   
+            return view('monitor/monitor')->with('data', $message);   
         } catch (AwsException $e) {
             return 'Error: ' . $e->getAwsErrorMessage();
         } 

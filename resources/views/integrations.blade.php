@@ -22,8 +22,8 @@
                     <?php foreach ($_integrations as $_integration): ?>
                         <tr>
                             <td><?php echo $_integration->type; ?></td> 
-                            <td><?php echo $_integration->api_key; ?></td>
-                            <td><?php echo $_integration->api_secret; ?></td> 
+                            <td><?php echo str_repeat('*', strlen($_integration->api_key) - 4) . substr($_integration->api_key, -4); ?></td>
+                            <td><?php echo str_repeat('*', strlen($_integration->api_secret) - 4) . substr($_integration->api_secret, -4); ?></td> 
                         </tr>
                     <?php endforeach; ?>
                     </tbody>
